@@ -12,6 +12,7 @@ Enhancements:
 
 * JSON logging will now output a repr for unserializable objects, rather than blowing up and failing to log. Thanks to Maciej Katafiasz for the patch.
 * Official support for Python 3.14.
+* Sensitive values can now be redacted from logged messages: declare a ``Field`` with ``sensitive=True``, or register sensitive field names and rooted field paths globally with ``eliot.add_sensitive_fields``. Matching values are recursively replaced with a placeholder before messages are serialized or sent to any destination (and before any failure diagnostic is logged), while the original logged objects, non-sensitive fields, and causal metadata remain unchanged.
 
 Deprecations and removals:
 

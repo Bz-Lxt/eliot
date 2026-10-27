@@ -15,6 +15,7 @@ from zope.interface import Interface, implementer
 
 from ._traceback import write_traceback, TRACEBACK_MESSAGE
 from ._message import EXCEPTION_FIELD, MESSAGE_TYPE_FIELD, REASON_FIELD
+from ._redaction import redact_dictionary
 from ._util import saferepr, safeunicode
 from .json import (
     json_default,
@@ -207,7 +208,10 @@ class Logger(object):
         """
         Serialize the dictionary, and write it to C{self._destinations}.
         """
-        dictionary = dictionary.copy()
+        # Redact sensitive values first, so both the serialized message and
+        # any failure diagnostics (which may embed the message) only ever see
+        # the redacted copy. The original dictionary is never modified.
+        dictionary = redact_dictionary(dictionary, serializer).copy()
         try:
             if serializer is not None:
                 serializer.serialize(dictionary)
@@ -305,6 +309,10 @@ class MemoryLogger(object):
         """
         Add the dictionary to list of messages.
         """
+        # Redact sensitive values before storing or validating, matching the
+        # behavior of the production L{Logger}. The original dictionary is
+        # never modified.
+        dictionary = redact_dictionary(dictionary, serializer)
         # Validate copy of the dictionary, to ensure what we store isn't
         # mutated.
         try:

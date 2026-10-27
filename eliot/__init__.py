@@ -19,6 +19,7 @@ from ._output import ILogger, Logger, MemoryLogger, to_file, FileDestination
 from ._validation import Field, fields, MessageType, ActionType, ValidationError
 from ._traceback import write_traceback, writeFailure
 from ._errors import register_exception_extractor
+from ._redaction import add_sensitive_fields, REDACTED
 
 
 # Backwards compatibility:
@@ -53,6 +54,7 @@ write_failure = writeFailure
 add_destinations = Logger._destinations.add
 remove_destination = removeDestination
 add_global_fields = addGlobalFields
+addSensitiveFields = add_sensitive_fields
 
 
 # Backwards compatibility for old versions of eliot-tree, which rely on
@@ -104,6 +106,9 @@ __all__ = [
     "add_destinations",
     "remove_destination",
     "add_global_fields",
+    "add_sensitive_fields",
+    "addSensitiveFields",
+    "REDACTED",
     "to_file",
     "log_call",
     "log_message",

@@ -27,6 +27,7 @@ from ._action import (
     FAILED_STATUS,
     log_message,
 )
+from ._redaction import REDACTED
 
 
 class ValidationError(Exception):
@@ -55,9 +56,15 @@ class Field(object):
 
     @ivar description: A description of what this field contains.
     @type description: C{str}
+
+    @ivar sensitive: If C{True}, values of this field will be redacted from
+        logged messages before they are serialized or sent to destinations.
+    @type sensitive: C{bool}
     """
 
-    def __init__(self, key, serializer, description="", extraValidator=None):
+    def __init__(
+        self, key, serializer, description="", extraValidator=None, sensitive=False
+    ):
         """
         @param serializer: A function that takes a single rich input and
             returns a serialized value that can be written out as JSON. May
@@ -68,11 +75,17 @@ class Field(object):
             L{ValidationError} if the value is a incorrect one for this
             field. Alternatively can be set to C{None}, in which case no
             additional validation is done.
+
+        @param sensitive: If C{True}, values of this field are sensitive and
+            will be replaced with a redaction placeholder in logged messages,
+            before serialization and delivery to destinations. The original
+            logged object is not modified.
         """
         self.key = key
         self.description = description
         self._serializer = serializer
         self._extraValidator = extraValidator
+        self.sensitive = sensitive
 
     def validate(self, input):
         """
@@ -83,6 +96,10 @@ class Field(object):
         @raises ValidationError: If the value is not serializable or fails to
             be validated by the additional validator.
         """
+        # A sensitive field whose value has already been redacted is always
+        # valid, regardless of the original field's type.
+        if self.sensitive and input == REDACTED:
+            return
         # Make sure the input serializes:
         self._serializer(input)
         # Use extra validator, if given:
@@ -97,6 +114,10 @@ class Field(object):
 
         @return: A serialized value.
         """
+        # Sensitive values are redacted before serialization; pass the
+        # redaction placeholder through unchanged.
+        if self.sensitive and input == REDACTED:
+            return input
         return self._serializer(input)
 
     @classmethod
@@ -125,7 +146,9 @@ class Field(object):
     for_value = forValue
 
     @classmethod
-    def forTypes(klass, key, classes, description, extraValidator=None):
+    def forTypes(
+        klass, key, classes, description, extraValidator=None, sensitive=False
+    ):
         """
         Create a L{Field} that must be an instance of a given set of types.
 
@@ -141,6 +164,8 @@ class Field(object):
         @type description: C{str}
 
         @param extraValidator: See description in L{Field.__init__}.
+
+        @param sensitive: See description in L{Field.__init__}.
 
         @return: A L{Field}.
         """
@@ -161,7 +186,13 @@ class Field(object):
             if extraValidator is not None:
                 extraValidator(value)
 
-        return klass(key, lambda v: v, description, extraValidator=validate)
+        return klass(
+            key,
+            lambda v: v,
+            description,
+            extraValidator=validate,
+            sensitive=sensitive,
+        )
 
     # PEP 8 variant:
     for_types = forTypes
